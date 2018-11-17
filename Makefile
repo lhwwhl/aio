@@ -1,16 +1,14 @@
-all : aio raio rwaio sio
+all : async_io_read sync_io_read
 
-aio : native_aio.c
-	gcc -o aio native_aio.c -laio
+async_io_read : io_utils.o async_io_read.c
+	gcc -std=c99 -o async_io_read async_io_read.c io_utils.o -laio
 
-raio : aio_rfile_in_blocks.c
-	gcc -std=c99 -o raio aio_rfile_in_blocks.c -laio
+sync_io_read : io_utils.o sync_io_read.c 
+	gcc -std=c99 -o sync_io_read sync_io_read.c io_utils.o
 
-rwaio : aio_rwfile_in_blocks.c
-	gcc -std=c99 -o rwaio aio_rwfile_in_blocks.c -laio
+io_utils.o : io_utils.h io_utils.c
+	gcc -std=c99 -c io_utils.c -o io_utils.o
 
-sio : sync_io_rfile.c
-	gcc -std=c99 -o sio sync_io_rfile.c
-
+.PHONY:clean
 clean :
-	rm -rf aio raio rwaio sio hello.txt
+	rm -rf sync_io_read async_io_read io_utils.o
