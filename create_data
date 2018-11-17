@@ -1,0 +1,15 @@
+#!/usr/bin/env python
+# coding=utf-8
+
+import os
+import shutil
+
+base = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j']
+data = [4096 * ch for ch in base]
+str = "".join(data)
+
+with open("0.data", "w") as f:
+    f.write(str*256)
+
+#for i in range(500):
+#    shutil.copyfile(0)
