@@ -33,7 +33,7 @@ void read_file_in_blocks(int *fds, int nums, int block) {
     }
 }
 
-int test_handle_time(int *fds, int nums, int block, int mode) {
+void test_handle_time(int *fds, int nums, int block, int mode) {
     long long start=0;
     long long end=0;
     void (*p)(int *, int, int);
@@ -44,12 +44,13 @@ int test_handle_time(int *fds, int nums, int block, int mode) {
     p(fds, nums, block);
     end = get_current_time_ms();
 
-    return (int)(end-start);
+    printf("Read %d files with %d block in %d mode, handle time %d\n", nums, block, mode, (int)(end-start));
 }
 
 int main(int argc, char *argv[]) {
     if(argc != 4) {
         printf("input: ./exec fd_nums block_size mode(0,1)\n");
+        return -1;
     }
     int nums = atoi(argv[1]);
     int block = atoi(argv[2]);
@@ -58,8 +59,7 @@ int main(int argc, char *argv[]) {
     int fds[nums];
     if (open_fds(fds, nums) < 0) return -1;
 
-    int interval = test_handle_time(fds, nums, block, mode);
-    printf("Read %d files with %d block in %d mode, handle time %d\n", nums, block, mode, interval);
+    test_handle_time(fds, nums, block, mode);
 
     return 0;
 }
