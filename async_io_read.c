@@ -100,7 +100,7 @@ void read_file_in_blocks_with_events(io_context_t ctx, int *fds, int nums, int b
         int exec_events = (nums - finished_file) >= event_max ? event_max : (nums - finished_file);
         while(had_read < file_size) {
             for(int i=0; i<exec_events; ++i) {
-                io_prep_pread(&iocbs[i], fds[i], buf[i], block, had_read);
+                io_prep_pread(&iocbs[i], fds[i+finished_file], buf[i], block, had_read);
                 iocb_list[i] = &iocbs[i];
             }
             int ret = io_submit(ctx, nums, iocb_list);
