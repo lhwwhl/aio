@@ -5,7 +5,7 @@
 #define IO_BLOCK_SIZE 4096
 #define IO_MAX_NUMS 32
 
-int open_fds(int *fds, int nums);
+int open_fds(int *fds, int nums, int mode);
 
 long long get_current_time_ms();
 

@@ -146,17 +146,18 @@ void test_handle_time(io_context_t ctx, int *fds, int nums, int block, int event
 }
 
 int main(int argc, char *argv[]) {
-    if(argc != 5) {
-        printf("input: ./exec fd_nums block_size event_ mode(0,1,2,3)\n");
+    if(argc != 6) {
+        printf("input: ./exec fd_nums flag block_size event_ mode(0,1,2,3)\n");
         return -1;
     }
     int nums = atoi(argv[1]);
-    int block = atoi(argv[2]);
-    int events = atoi(argv[3]);
-    int mode = atoi(argv[4]);
+    int flag = atoi(argv[2]);
+    int block = atoi(argv[3]);
+    int events = atoi(argv[4]);
+    int mode = atoi(argv[5]);
 
     int fds[nums];
-    if (open_fds(fds, nums) < 0) return -1;
+    if (open_fds(fds, nums, flag) < 0) return -1;
 
     io_context_t ctx=0;
     io_setup(nums, &ctx);

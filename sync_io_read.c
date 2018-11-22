@@ -48,16 +48,17 @@ void test_handle_time(int *fds, int nums, int block, int mode) {
 }
 
 int main(int argc, char *argv[]) {
-    if(argc != 4) {
-        printf("input: ./exec fd_nums block_size mode(0,1)\n");
+    if(argc != 5) {
+        printf("input: ./exec fd_nums flag block_size mode(0,1)\n");
         return -1;
     }
     int nums = atoi(argv[1]);
-    int block = atoi(argv[2]);
-    int mode = atoi(argv[3]);
+    int flag = atoi(argv[2]);
+    int block = atoi(argv[3]);
+    int mode = atoi(argv[4]);
 
     int fds[nums];
-    if (open_fds(fds, nums) < 0) return -1;
+    if (open_fds(fds, nums, flag) < 0) return -1;
 
     test_handle_time(fds, nums, block, mode);
 

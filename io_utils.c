@@ -8,11 +8,15 @@
 
 #include "io_utils.h"
 
-int open_fds(int *fds, int nums) {
+int open_fds(int *fds, int nums, int mode) {
     char filename[30];
 
     for(int i=0; i<nums; ++i) {
-        sprintf(filename, "./data/%d.data", i);
+        if(mode == 0)
+            sprintf(filename, "/dev/shm/data/%d.data", i);
+        else
+            sprintf(filename, "./data/%d.data", i);
+        //printf("filename %s\n", filename);
         if ((fds[i] = open(filename, O_RDONLY)) < 0) {
             printf("open file error %s\n", strerror(errno));
             return -1;
