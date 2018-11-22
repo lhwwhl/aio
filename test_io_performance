@@ -14,6 +14,7 @@ modes = {"sync":[0, 1], "async":[0, 1, 2, 3]}
 fds = [100, 200, 400]
 sync_cmd = "./sync_io_read {} {} {} {}"
 async_cmd = "./async_io_read {} {} {} {} {}"
+clean_caches = "sync; sudo sh -c 'echo 3 > /proc/sys/vm/drop_caches'"
 count = 5
 
 def exec_mode(type):
@@ -27,6 +28,8 @@ def exec_mode(type):
                 print("**********start**********")
                 for i in range(count):
                     subprocess.Popen(shlex.split(command)).wait()
+                    subprocess.Popen(shlex.split("sync")).wait()
+                    subprocess.Popen(shlex.split("sudo sh -c 'echo 3 > /proc/sys/vm/drop_caches'")).wait()
                 print("***********end***********")
                 print()
 
