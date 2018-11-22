@@ -44,7 +44,7 @@ void test_handle_time(int *fds, int nums, int block, int mode) {
     p(fds, nums, block);
     end = get_current_time_ms();
 
-    printf("Read %d files with %d block in %d mode, handle time %d\n", nums, block, mode, (int)(end-start));
+    printf("use %d block in %d mode, handle time %d\n", block, mode, (int)(end-start));
 }
 
 int main(int argc, char *argv[]) {
@@ -59,6 +59,10 @@ int main(int argc, char *argv[]) {
 
     int fds[nums];
     if (open_fds(fds, nums, flag) < 0) return -1;
+    if (flag == 0)
+        printf("Read %d files from memery\n", nums);
+    else
+        printf("Read %d files from disk\n", nums);
 
     test_handle_time(fds, nums, block, mode);
 

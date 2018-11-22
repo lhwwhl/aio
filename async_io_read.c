@@ -142,7 +142,7 @@ void test_handle_time(io_context_t ctx, int *fds, int nums, int block, int event
     pfunc(ctx, fds, nums, block, event_max);
     end = get_current_time_ms();
 
-    printf("Read %d files with %d block,\nuse %d mode with %d events,\nhandle time %d ms\n", nums, block, mode, event_max, (int)(end-start));
+    printf("use %d block in %d mode with %d events, handle time %d ms\n", block, mode, event_max, (int)(end-start));
 }
 
 int main(int argc, char *argv[]) {
@@ -158,6 +158,10 @@ int main(int argc, char *argv[]) {
 
     int fds[nums];
     if (open_fds(fds, nums, flag) < 0) return -1;
+    if (flag == 0)
+        printf("Read %d files from memery\n", nums);
+    else
+        printf("Read %d files from disk\n", nums);
 
     io_context_t ctx=0;
     io_setup(nums, &ctx);
