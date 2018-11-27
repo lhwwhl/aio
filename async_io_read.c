@@ -151,6 +151,72 @@ void test_handle_time(int *fds, int nums, int block, int event_max, int mode) {
     printf("use %d block in %d mode with %d events, handle time %d us\n", block, mode, event_max, (int)(end-start));
 }
 
+void submit_requests(int *fds, int nums, int block) {
+    struct iocb iocbs[nums];
+    struct iocb *iocb_list[nums];
+    //char *buf[nums];
+
+    //for(int i=0; i<nums; ++i){
+    //    buf[i] = (char *)calloc(0, 4096);
+    //    posix_memalign((void**)&buf[i], 4096, 4096);
+    //}
+
+    int file_size = get_file_size(fds[0]);
+    int had_read = 0;
+    long long total_size = 0;
+    while(had_read < file_size) {
+        start = get_current_time_ms();
+        for(int i=0; i<nums; ++i) {
+            struct iocb *io = (struct iocb *)malloc(sizeof(struct iocb));
+            char *buf = (char *)malloc(4096);
+            posix_memalign((void**)&buf, 4096, 4096);
+            io_prep_pread(io, fds[i], buf, block, had_read);
+            io->data = (void *)buf;
+            int ret = io_submit(ctx, 1, &io);
+            if(ret < 0)
+                printf("io submit error\n");
+        }
+
+        //for(int i=0; i<nums; ++i) {
+        //    io_prep_pread(&iocbs[i], fds[i], buf[i], block, had_read);
+        //    iocbs[i].data = (void *)buf;
+        //    iocb_list[i] = &iocbs[i];
+        //}
+        //int ret = io_submit(ctx, nums, iocb_list);
+        //if(ret < 0)
+        //    printf("io submit error\n");
+        had_read += block;
+        sleep(1);
+    }
+}
+
+void *reap_events(void *dummy){
+    int nums = *(int *)dummy;
+    printf("thread %d\n", nums);
+    struct io_event events[nums];
+    int counts = 0;
+    struct timespec timeout = {1, 0};
+    printf("Starting Reaping Events\n");
+    while(1) {
+        int completed = io_getevents(ctx, 0, nums, events, &timeout);
+        for(int i=0; i<completed; ++i){
+            char *data=(char *)events[i].data;
+            //printf("%ld %c\n", events[i].res, data[0]);
+            //free(data);
+            //memset(list[i].obj, 0xff, sizeof(struct iocb));	// paranoia
+            //free(list[i].obj);
+        }
+        counts += completed;
+        if(counts >= nums) {
+            //printf("completed %d\n", completed);
+            end = get_current_time_ms();
+            printf("iocb finished %d us\n", (int)(end - start));
+            counts = 0;
+        }
+    }
+
+}
+
 int main(int argc, char *argv[]) {
     //if(argc != 6) {
     //    printf("input: ./exec fd_nums flag block_size event_ mode(0,1,2,3)\n");
@@ -162,10 +228,10 @@ int main(int argc, char *argv[]) {
     //int events = atoi(argv[4]);
     //int mode = atoi(argv[5]);
 
-    int nums = 100;
+    int nums = 30;
     int flags = 1;
     int block = 4096;
-    int events = 100;
+    int events = 50;
     int mode = 2;
 
     int fds[nums];
@@ -183,7 +249,12 @@ int main(int argc, char *argv[]) {
 
     io_setup(8192, &ctx);
 
-    test_handle_time(fds, nums, block, events, mode);
+    pthread_t reaper_thread;
+
+    pthread_create(&reaper_thread, NULL, reap_events, (void *)&nums);
+    //test_handle_time(fds, nums, block, events, mode);
+    submit_requests(fds, nums, block);
+    pthread_join(reaper_thread, NULL);
 
     return 0;
 }
