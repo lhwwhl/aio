@@ -2,10 +2,7 @@
 #define _IO_UTILS_H_
 #endif
 
-#define IO_BLOCK_SIZE 4096
-#define IO_MAX_NUMS 32
-
-int open_fds(int *fds, int nums, int mode);
+int open_fds(int *fds, int flags, const char *path, int nums);
 
 long long get_current_time_ms();
 

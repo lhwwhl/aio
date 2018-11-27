@@ -1,23 +1,23 @@
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <fcntl.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <string.h>
-#include <sys/timeb.h>
+#include <sys/time.h>
 #include <errno.h>
 
 #include "io_utils.h"
 
-int open_fds(int *fds, int nums, int mode) {
-    char filename[30];
+int open_fds(int *fds, int flags, const char *path, int nums) {
+    char fullname[100]={0};
+    char tempname[100]={0};
 
+    strcat(tempname, path);
+    strcat(tempname, "%d.data");
     for(int i=0; i<nums; ++i) {
-        if(mode == 0)
-            sprintf(filename, "/dev/shm/data/%d.data", i);
-        else
-            sprintf(filename, "./data/%d.data", i);
-        //printf("filename %s\n", filename);
-        if ((fds[i] = open(filename, O_RDONLY)) < 0) {
+        sprintf(fullname, tempname, i);
+        if ((fds[i] = open(fullname, flags)) < 0) {
             printf("open file error %s\n", strerror(errno));
             return -1;
         }
@@ -27,9 +27,9 @@ int open_fds(int *fds, int nums, int mode) {
 }
 
 long long get_current_time_ms() {
-    struct timeb t;
-    ftime(&t);
-    return 1000 * t.time + t.millitm;
+    struct timeval time;
+    gettimeofday(&time, NULL);
+    return 1000000 * time.tv_sec + time.tv_usec;
 }
 
 off_t get_file_size(int fd) {
@@ -37,7 +37,7 @@ off_t get_file_size(int fd) {
 
     if (fstat(fd, &st) < 0) {
         printf("get file size error %s\n", strerror(errno));
-        return -1;
+        return -2;
     }
 
     return st.st_size;
