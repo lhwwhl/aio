@@ -24,12 +24,17 @@ void read_file_in_all(int *fds, int nums, int block) {
 void read_file_in_blocks(int *fds, int nums, int block) {
     char buf[block];
 
+    long long start=0, end=0;
     int file_size = get_file_size(fds[0]);
-    while(file_size>0) {
+    int offset=0;
+    while(file_size>offset) {
+        start = get_current_time_ms();
         for(int i=0; i<nums; ++i) {
             read(fds[i], buf, block);
         }
-        file_size -= block;
+        end = get_current_time_ms();
+        printf("split %d fd time %d us\n", nums, (int)(end-start));
+        offset += block;
     }
 }
 
@@ -53,16 +58,23 @@ int main(int argc, char *argv[]) {
         return -1;
     }
     int nums = atoi(argv[1]);
-    int flag = atoi(argv[2]);
+    int flags = atoi(argv[2]);
     int block = atoi(argv[3]);
     int mode = atoi(argv[4]);
 
     int fds[nums];
-    if (open_fds(fds, nums, flag) < 0) return -1;
-    if (flag == 0)
+    char path[20]={0};
+    if (flags == 0) {
+        strcpy(path, "/dev/shm/data/");
         printf("Read %d files from memery\n", nums);
-    else
+    }
+    else {
+        strcpy(path, "./data/");
         printf("Read %d files from disk\n", nums);
+    }
+
+    if (open_fds(fds, O_RDONLY, path, nums) < 0)
+        return -1;
 
     test_handle_time(fds, nums, block, mode);
 
