@@ -18,6 +18,7 @@ int open_fds(int *fds, int flags, const char *path, int nums) {
     for(int i=0; i<nums; ++i) {
         sprintf(fullname, tempname, i);
         if ((fds[i] = open(fullname, flags)) < 0) {
+            printf("fullname %s len %d\n", fullname, strlen(fullname));
             printf("open file error %s\n", strerror(errno));
             return -1;
         }
