@@ -1,21 +1,27 @@
 #define _GNU_SOURCE
-#include<stdio.h>
-#include<stdlib.h>
-#include<unistd.h>
-#include<fcntl.h>
-#include<sys/types.h>
-#include<sys/stat.h>
-#include<libaio.h>
-#include<errno.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <sys/time.h>
+#include <libaio.h>
+#include <pthread.h>
+#include <errno.h>
 
 #include "io_utils.h"
 
-void read_file_all_in_order_with_event(io_context_t ctx, int *fds, int nums, int block, int event_max);
-void read_file_all_in_order_with_events(io_context_t ctx, int *fds, int nums, int block, int event_max);
-void read_file_in_blocks_with_nums_events(io_context_t ctx, int *fds, int nums, int block, int event_max);
-void read_file_in_blocks_with_events(io_context_t ctx, int *fds, int nums, int block, int event_max);
+io_context_t ctx=0;
+long long start = 0;
+long long end = 0;
 
-void read_file_all_in_order_with_event(io_context_t ctx, int *fds, int nums, int block, int event_max) {
+void read_file_all_in_order_with_event(int *fds, int nums, int block, int event_max);
+void read_file_all_in_order_with_events(int *fds, int nums, int block, int event_max);
+void read_file_in_blocks_with_nums_events(int *fds, int nums, int block, int event_max);
+void read_file_in_blocks_with_events(int *fds, int nums, int block, int event_max);
+
+void read_file_all_in_order_with_event(int *fds, int nums, int block, int event_max) {
     struct iocb io;
     struct iocb *p=&io;
     char buf[block];
@@ -37,7 +43,7 @@ void read_file_all_in_order_with_event(io_context_t ctx, int *fds, int nums, int
     }
 }
 
-void read_file_all_in_order_with_events(io_context_t ctx, int *fds, int nums, int block, int event_max) {
+void read_file_all_in_order_with_events(int *fds, int nums, int block, int event_max) {
     struct iocb iocbs[event_max];
     struct iocb *iocb_list[event_max];
     char buf[event_max][block];
@@ -66,7 +72,7 @@ void read_file_all_in_order_with_events(io_context_t ctx, int *fds, int nums, in
     }
 }
 
-void read_file_in_blocks_with_nums_events(io_context_t ctx, int *fds, int nums, int block, int event_max) {
+void read_file_in_blocks_with_nums_events(int *fds, int nums, int block, int event_max) {
     struct iocb iocbs[nums];
     struct iocb *iocb_list[nums];
     char buf[nums][block];
@@ -87,7 +93,7 @@ void read_file_in_blocks_with_nums_events(io_context_t ctx, int *fds, int nums, 
     }
 }
 
-void read_file_in_blocks_with_events(io_context_t ctx, int *fds, int nums, int block, int event_max) {
+void read_file_in_blocks_with_events(int *fds, int nums, int block, int event_max) {
     struct iocb iocbs[event_max];
     struct iocb *iocb_list[event_max];
     char buf[event_max][block];
@@ -114,10 +120,10 @@ void read_file_in_blocks_with_events(io_context_t ctx, int *fds, int nums, int b
     }
 }
 
-void test_handle_time(io_context_t ctx, int *fds, int nums, int block, int event_max, int mode) {
+void test_handle_time(int *fds, int nums, int block, int event_max, int mode) {
     long long start=0;
     long long end=0;
-    void (*pfunc)(io_context_t, int *, int, int, int);
+    void (*pfunc)(int *, int, int, int);
 
     switch(mode) {
         case 0 :
@@ -139,34 +145,45 @@ void test_handle_time(io_context_t ctx, int *fds, int nums, int block, int event
     }
 
     start = get_current_time_ms();
-    pfunc(ctx, fds, nums, block, event_max);
+    pfunc(fds, nums, block, event_max);
     end = get_current_time_ms();
 
-    printf("use %d block in %d mode with %d events, handle time %d ms\n", block, mode, event_max, (int)(end-start));
+    printf("use %d block in %d mode with %d events, handle time %d us\n", block, mode, event_max, (int)(end-start));
 }
 
 int main(int argc, char *argv[]) {
-    if(argc != 6) {
-        printf("input: ./exec fd_nums flag block_size event_ mode(0,1,2,3)\n");
-        return -1;
-    }
-    int nums = atoi(argv[1]);
-    int flag = atoi(argv[2]);
-    int block = atoi(argv[3]);
-    int events = atoi(argv[4]);
-    int mode = atoi(argv[5]);
+    //if(argc != 6) {
+    //    printf("input: ./exec fd_nums flag block_size event_ mode(0,1,2,3)\n");
+    //    return -1;
+    //}
+    //int nums = atoi(argv[1]);
+    //int flags = atoi(argv[2]);
+    //int block = atoi(argv[3]);
+    //int events = atoi(argv[4]);
+    //int mode = atoi(argv[5]);
+
+    int nums = 100;
+    int flags = 1;
+    int block = 4096;
+    int events = 100;
+    int mode = 2;
 
     int fds[nums];
-    if (open_fds(fds, nums, flag) < 0) return -1;
-    if (flag == 0)
+    char path[20]={0};
+    if (flags == 0) {
+        strcpy(path, "/dev/shm/data/");
         printf("Read %d files from memery\n", nums);
-    else
+    } else {
+        strcpy(path, "./data/");
         printf("Read %d files from disk\n", nums);
+    }
 
-    io_context_t ctx=0;
-    io_setup(nums, &ctx);
+    if (open_fds(fds, O_RDONLY | O_DIRECT, path, nums) < 0) return -1;
+    //if (open_fds(fds, O_RDONLY, path, nums) < 0) return -1;
 
-    test_handle_time(ctx, fds, nums, block, events, mode);
+    io_setup(8192, &ctx);
+
+    test_handle_time(fds, nums, block, events, mode);
 
     return 0;
 }
