@@ -79,62 +79,70 @@ int main(int argc, char *argv[]) {
         return 5;
     }
 
-    long long start = get_current_time_ms();
     for (int i=0; i<NUM_EVENTS; ++i) {
         if (posix_memalign(&buf[i], ALIGN_SIZE, RD_WR_SIZE)) {
             perror("posix_memalign");
             return 6;
         }
-        //printf("buf: %p\n", buf);
-
-        io_prep_pread(&iocbs[i], fds[i], buf[i], RD_WR_SIZE, 0);
-        io_set_eventfd(&iocbs[i], efd);
-        //io_set_callback(&iocbs[i], aio_callback);
-        iocbs[i].data = buf[i];
-        iocbps[i] = &iocbs[i];
     }
 
-    if (io_submit(ctx, NUM_EVENTS, iocbps) != NUM_EVENTS) {
-        perror("io_submit");
-        return 7;
-    }
-    long long end = get_current_time_ms();
-    printf("iocb submit %d us\n", (int)(end - start));
-
-    int total_completed_events = 0;
-    while (total_completed_events < NUM_EVENTS) {
-        uint64_t active_events;
-
-        if (epoll_wait(epfd, &epevent, 1, -1) != 1) {
-            perror("epoll_wait");
-            return 8;
+    int file_size = get_file_size(fds[0]);
+    int had_read = 0;
+    long long total_size = 0;
+    while(had_read < file_size) {
+        long long start = get_current_time_ms();
+        for (int i=0; i<NUM_EVENTS; ++i) {
+            io_prep_pread(&iocbs[i], fds[i], buf[i], RD_WR_SIZE, 0);
+            io_set_eventfd(&iocbs[i], efd);
+            //io_set_callback(&iocbs[i], aio_callback);
+            iocbs[i].data = buf[i];
+            iocbps[i] = &iocbs[i];
         }
 
-        if (read(efd, &active_events, sizeof(active_events)) != sizeof(active_events)) {
-            perror("read");
-            return 9;
+        if (io_submit(ctx, NUM_EVENTS, iocbps) != NUM_EVENTS) {
+            perror("io_submit");
+            return 7;
         }
-        int pending_events = active_events;
-        while(pending_events > 0) {
-            int ret = io_getevents(ctx, 1, 1, &event, &tms);
-            if (ret > 0) {
-                //((io_callback_t)(event.data))(ctx, event.obj, event.res, event.res2);
-                char *data = event.data;
-                //printf("buf %c\n", data[0]);
-                //struct iocb *iocb = event.obj;
-                //char *iocbbuf = (char *)iocb->u.c.buf;
-                //printf("iocb buf %p\n", iocbbuf);
-                total_completed_events += ret;
-                pending_events -= ret;
+        long long end = get_current_time_ms();
+        printf("iocb submit %d us\n", (int)(end - start));
+
+        int total_completed_events = 0;
+        while (total_completed_events < NUM_EVENTS) {
+            uint64_t active_events;
+            if (epoll_wait(epfd, &epevent, 1, -1) != 1) {
+                perror("epoll_wait");
+                return 8;
+            }
+
+            if (read(efd, &active_events, sizeof(active_events)) != sizeof(active_events)) {
+                perror("read");
+                return 9;
+            }
+            int pending_events = active_events;
+            while(pending_events > 0) {
+                int ret = io_getevents(ctx, 1, 1, &event, &tms);
+                if (ret > 0) {
+                    //((io_callback_t)(event.data))(ctx, event.obj, event.res, event.res2);
+                    char *data = event.data;
+                    //printf("buf %c\n", data[0]);
+                    //struct iocb *iocb = event.obj;
+                    //char *iocbbuf = (char *)iocb->u.c.buf;
+                    //printf("iocb buf %p\n", iocbbuf);
+                    total_completed_events += ret;
+                    pending_events -= ret;
+                }
             }
         }
+
+        end = get_current_time_ms();
+        printf("finished %d us\n\n", (int)(end - start));
+        had_read +=  RD_WR_SIZE;
     }
 
-    end = get_current_time_ms();
-    printf("iocb finished %d us\n", (int)(end - start));
-
     close(epfd);
-    //free(buf);
+    for (int i=0; i<NUM_EVENTS; ++i) {
+        free(buf[i]);
+    }
     io_destroy(ctx);
     close(fd);
     close(efd);
