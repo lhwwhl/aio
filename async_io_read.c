@@ -164,17 +164,22 @@ void submit_requests(int *fds, int nums, int block) {
     int file_size = get_file_size(fds[0]);
     int had_read = 0;
     long long total_size = 0;
+    long long s_submit, e_submit;
     while(had_read < file_size) {
         start = get_current_time_ms();
         for(int i=0; i<nums; ++i) {
+
             struct iocb *io = (struct iocb *)malloc(sizeof(struct iocb));
             char *buf = (char *)malloc(4096);
             posix_memalign((void**)&buf, 4096, 4096);
             io_prep_pread(io, fds[i], buf, block, had_read);
             io->data = (void *)buf;
+            s_submit = get_current_time_ms();
             int ret = io_submit(ctx, 1, &io);
             if(ret < 0)
                 printf("io submit error\n");
+            e_submit = get_current_time_ms();
+            printf("single iocb submit %d us\n", (int)(e_submit - s_submit));
         }
 
         //for(int i=0; i<nums; ++i) {
@@ -186,7 +191,7 @@ void submit_requests(int *fds, int nums, int block) {
         //if(ret < 0)
         //    printf("io submit error\n");
         had_read += block;
-        sleep(1);
+        //sleep(1);
     }
 }
 
@@ -228,10 +233,10 @@ int main(int argc, char *argv[]) {
     //int events = atoi(argv[4]);
     //int mode = atoi(argv[5]);
 
-    int nums = 30;
+    int nums = 100;
     int flags = 1;
     int block = 4096;
-    int events = 50;
+    int events = 100;
     int mode = 2;
 
     int fds[nums];
