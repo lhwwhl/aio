@@ -25,19 +25,26 @@ void read_file_in_blocks(int *fds, int nums, int block) {
     char buf[block];
 
     long long start=0, end=0;
+    int caps=15;
     int file_size = get_file_size(fds[0]);
+    int ret;
     int offset=0;
     while(file_size>offset) {
         start = get_current_time_ms();
-        for(int i=0; i<nums; ++i) {
-            read(fds[i], buf, block);
+        //for(int i=0; i<nums; ++i) {
+        for(int i=0; i<caps; ++i) {
+            //start = get_current_time_ms();
+            ret = read(fds[i], buf, block);
+            //end = get_current_time_ms();
+            //printf("single read time %d us\n", (int)(end-start));
         }
         end = get_current_time_ms();
-        printf("split %d fd time %d us\n", nums, (int)(end-start));
+        printf("fd %d read time %d us\n", caps, (int)(end-start));
         offset += block;
+        if(caps < nums)
+            caps += 15;
     }
 }
-
 void test_handle_time(int *fds, int nums, int block, int mode) {
     long long start=0;
     long long end=0;
@@ -53,14 +60,19 @@ void test_handle_time(int *fds, int nums, int block, int mode) {
 }
 
 int main(int argc, char *argv[]) {
-    if(argc != 5) {
-        printf("input: ./exec fd_nums flag block_size mode(0,1)\n");
-        return -1;
-    }
-    int nums = atoi(argv[1]);
-    int flags = atoi(argv[2]);
-    int block = atoi(argv[3]);
-    int mode = atoi(argv[4]);
+    //if(argc != 5) {
+    //    printf("input: ./exec fd_nums flag block_size mode(0,1)\n");
+    //    return -1;
+    //}
+    //int nums = atoi(argv[1]);
+    //int flags = atoi(argv[2]);
+    //int block = atoi(argv[3]);
+    //int mode = atoi(argv[4]);
+
+    int nums = 255;
+    int flags = 1;
+    int block = 4096;
+    int mode = 1;
 
     int fds[nums];
     char path[20]={0};
@@ -74,6 +86,7 @@ int main(int argc, char *argv[]) {
     }
 
     if (open_fds(fds, O_RDONLY, path, nums) < 0)
+    //if (open_fds(fds, O_RDONLY | O_NONBLOCK, path, nums) < 0)
         return -1;
 
     test_handle_time(fds, nums, block, mode);
