@@ -4,6 +4,8 @@
 import os
 import shutil
 
+srcfile = "0.data"
+
 base = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j']
 data = [4096 * ch for ch in base]
 str = "".join(data)
@@ -11,5 +13,6 @@ str = "".join(data)
 with open("0.data", "w") as f:
     f.write(str*256)
 
-#for i in range(500):
-#    shutil.copyfile(0)
+for i in range(1, 500):
+    destfile = "{}.data".format(i)
+    shutil.copy(srcfile, destfile)
