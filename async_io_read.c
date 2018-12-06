@@ -151,93 +151,31 @@ void test_handle_time(int *fds, int nums, int block, int event_max, int mode) {
     printf("use %d block in %d mode with %d events, handle time %d us\n", block, mode, event_max, (int)(end-start));
 }
 
-void submit_requests(int *fds, int nums, int block) {
-    struct iocb iocbs[nums];
-    struct iocb *iocb_list[nums];
-    //char *buf[nums];
-
-    //for(int i=0; i<nums; ++i){
-    //    buf[i] = (char *)calloc(0, 4096);
-    //    posix_memalign((void**)&buf[i], 4096, 4096);
-    //}
-
-    int file_size = get_file_size(fds[0]);
-    int had_read = 0;
-    long long total_size = 0;
-    long long s_submit, e_submit;
-    while(had_read < file_size) {
-        start = get_current_time_ms();
-        for(int i=0; i<nums; ++i) {
-
-            struct iocb *io = (struct iocb *)malloc(sizeof(struct iocb));
-            char *buf = (char *)malloc(4096);
-            posix_memalign((void**)&buf, 4096, 4096);
-            io_prep_pread(io, fds[i], buf, block, had_read);
-            io->data = (void *)buf;
-            s_submit = get_current_time_ms();
-            int ret = io_submit(ctx, 1, &io);
-            if(ret < 0)
-                printf("io submit error\n");
-            e_submit = get_current_time_ms();
-            printf("single iocb submit %d us\n", (int)(e_submit - s_submit));
-        }
-
-        //for(int i=0; i<nums; ++i) {
-        //    io_prep_pread(&iocbs[i], fds[i], buf[i], block, had_read);
-        //    iocbs[i].data = (void *)buf;
-        //    iocb_list[i] = &iocbs[i];
-        //}
-        //int ret = io_submit(ctx, nums, iocb_list);
-        //if(ret < 0)
-        //    printf("io submit error\n");
-        had_read += block;
-        //sleep(1);
-    }
-}
-
-void *reap_events(void *dummy){
-    int nums = *(int *)dummy;
-    printf("thread %d\n", nums);
-    struct io_event events[nums];
-    int counts = 0;
-    struct timespec timeout = {1, 0};
-    printf("Starting Reaping Events\n");
-    while(1) {
-        int completed = io_getevents(ctx, 0, nums, events, &timeout);
-        for(int i=0; i<completed; ++i){
-            char *data=(char *)events[i].data;
-            //printf("%ld %c\n", events[i].res, data[0]);
-            //free(data);
-            //memset(list[i].obj, 0xff, sizeof(struct iocb));	// paranoia
-            //free(list[i].obj);
-        }
-        counts += completed;
-        if(counts >= nums) {
-            //printf("completed %d\n", completed);
-            end = get_current_time_ms();
-            printf("iocb finished %d us\n", (int)(end - start));
-            counts = 0;
-        }
-    }
-
-}
-
 int main(int argc, char *argv[]) {
-    //if(argc != 6) {
-    //    printf("input: ./exec fd_nums flag block_size event_ mode(0,1,2,3)\n");
-    //    return -1;
-    //}
-    //int nums = atoi(argv[1]);
-    //int flags = atoi(argv[2]);
-    //int block = atoi(argv[3]);
-    //int events = atoi(argv[4]);
-    //int mode = atoi(argv[5]);
+    if(argc != 6) {
+        printf("input: ./exec fd_nums flag block_size event_ mode(0,1,2,3)\n");
+        return -1;
+    }
 
-    int nums = 100;
-    int flags = 1;
-    int block = 4096;
-    int events = 100;
-    int mode = 2;
+    //nums : 测试打开的文件数量;
+    //flags : 0代表在文件的路径在tmpfs下，1代码在当前目录的data下;
+    //block : 设定的读取buf的大小，4k，8k，16k等等(换算为字节);
+    //events : 设定的用于读取的events个数；
+    //mode : 0代表用1个event顺序读文件，直到读完nums个文件;
+    //       1代表用events个事件顺序读文件，直到读完nums个文件;
+    //       2代表用nums相同个数的events分片读文件，每次读block大小(同时读多个文件);
+    //       3代表用events个事件分片读，为测试events的个数是否对读取文件效率有影响;
+    int nums = atoi(argv[1]);
+    int flags = atoi(argv[2]);
+    int block = atoi(argv[3]);
+    int events = atoi(argv[4]);
+    int mode = atoi(argv[5]);
+
+    //int nums = 100;
+    //int flags = 1;
+    //int block = 4096;
+    //int events = 100;
+    //int mode = 2;
 
     int fds[nums];
     char path[20]={0};
@@ -249,17 +187,15 @@ int main(int argc, char *argv[]) {
         printf("Read %d files from disk\n", nums);
     }
 
-    if (open_fds(fds, O_RDONLY | O_DIRECT, path, nums) < 0) return -1;
-    //if (open_fds(fds, O_RDONLY, path, nums) < 0) return -1;
+    //此版本适用于同步读取.
+    //direct io获取数据会有问题，直接io_submit后立马io_getevents会导致数据不完全.
+    //需要用thread或epoll监控事件，来进行事件监控;
+    if (open_fds(fds, O_RDONLY, path, nums) < 0) return -1;
+    //if (open_fds(fds, O_RDONLY | O_DIRECT, path, nums) < 0) return -1;
 
     io_setup(8192, &ctx);
 
-    pthread_t reaper_thread;
-
-    pthread_create(&reaper_thread, NULL, reap_events, (void *)&nums);
-    //test_handle_time(fds, nums, block, events, mode);
-    submit_requests(fds, nums, block);
-    pthread_join(reaper_thread, NULL);
+    test_handle_time(fds, nums, block, events, mode);
 
     return 0;
 }
