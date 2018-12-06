@@ -86,15 +86,14 @@ void *reap_events(void *dummy){
 }
 
 int main(int argc, char *argv[]) {
-    if(argc != 6) {
-        printf("input: ./exec fd_nums flag block_size event_ mode(0,1,2,3)\n");
+    if(argc != 4) {
+        printf("input: ./exec fd_nums flag block_size\n");
         return -1;
     }
 
     //nums : 测试打开的文件数量;
     //flags : 0代表在文件的路径在tmpfs下，1代码在当前目录的data下;
     //block : 设定的读取buf的大小，4k，8k，16k等等(换算为字节);
-    //events :
     int nums = atoi(argv[1]);
     int flags = atoi(argv[2]);
     int block = atoi(argv[3]);
